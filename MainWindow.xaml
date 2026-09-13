@@ -1,0 +1,227 @@
+<Window x:Class="FloatingPomodoro.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="FloatingPomodoro" Height="104" Width="450"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ResizeMode="NoResize"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <Window.Resources>
+        <Style x:Key="ThemeButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#40FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Flat transport button: glyph only, no border -->
+        <Style x:Key="TransportButtonStyle" TargetType="Button" BasedOn="{StaticResource ThemeButtonStyle}">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="24"/>
+        </Style>
+
+        <Style x:Key="MusicProgressBarStyle" TargetType="ProgressBar">
+            <Setter Property="Height" Value="4"/>
+            <Setter Property="Minimum" Value="0"/>
+            <Setter Property="Maximum" Value="1"/>
+            <Setter Property="Background" Value="#33FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="2">
+                            <Grid>
+                                <Rectangle x:Name="PART_Track"/>
+                                <Rectangle x:Name="PART_Indicator" Fill="{TemplateBinding Foreground}"
+                                           HorizontalAlignment="Left" RadiusX="2" RadiusY="2"/>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="16" Background="#FA0A0A0A" Padding="10,6">
+        <Grid>
+
+            <!-- MAIN VIEW: music | divider | timer -->
+            <Grid x:Name="MainView" Visibility="Visible">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="170"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Music panel -->
+                <Grid Grid.Column="0" Margin="0,0,8,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Album art (placeholder glyph shows when no artwork) -->
+                    <Border x:Name="AlbumArtBorder" Grid.Row="0" Grid.RowSpan="3"
+                            Width="56" Height="56" CornerRadius="4"
+                            BorderThickness="1" BorderBrush="Red"
+                            VerticalAlignment="Top" Margin="0,0,8,0">
+                        <TextBlock x:Name="AlbumArtPlaceholder" Text="&#xE8D6;"
+                                   FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="Red"
+                                   Opacity="0.5"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <TextBlock x:Name="TrackTitle" Grid.Row="0" Grid.Column="1"
+                               Text="Nothing playing" Foreground="Red"
+                               FontSize="13" FontWeight="Bold"
+                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                               VerticalAlignment="Center"/>
+
+                    <TextBlock x:Name="TrackArtist" Grid.Row="1" Grid.Column="1"
+                               Text="" Foreground="Red" Opacity="0.75"
+                               FontSize="11"
+                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                               VerticalAlignment="Center" Margin="0,1,0,0"/>
+
+                    <!-- Progress: 14px transparent hit area with the 4px bar centred inside -->
+                    <Grid Grid.Row="2" Grid.Column="1" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border x:Name="ProgressHitArea" Grid.Column="0" Height="14"
+                                Background="Transparent" Cursor="Hand"
+                                VerticalAlignment="Center"
+                                MouseLeftButtonDown="ProgressHitArea_MouseLeftButtonDown">
+                            <ProgressBar x:Name="MusicProgress" Value="0" Foreground="Red"
+                                         VerticalAlignment="Center"
+                                         Style="{StaticResource MusicProgressBarStyle}"/>
+                        </Border>
+
+                        <TextBlock x:Name="PositionText" Grid.Column="1" Text="0:00 / 0:00"
+                                   Foreground="Red" Opacity="0.75" FontSize="10"
+                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </Grid>
+
+                    <!-- Transport -->
+                    <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                                Orientation="Horizontal" HorizontalAlignment="Center"
+                                VerticalAlignment="Top" Margin="0,2,0,0">
+                        <Button x:Name="PrevTrackButton" Content="&#xE892;" Width="30"
+                                Click="PrevTrackButton_Click" ToolTip="Previous"
+                                Foreground="Red" Style="{StaticResource TransportButtonStyle}"/>
+                        <Button x:Name="PlayPauseButton" Content="&#xE768;" Width="34" FontSize="15"
+                                Click="PlayPauseButton_Click" ToolTip="Play / Pause"
+                                Foreground="Red" Style="{StaticResource TransportButtonStyle}"/>
+                        <Button x:Name="NextTrackButton" Content="&#xE893;" Width="30"
+                                Click="NextTrackButton_Click" ToolTip="Next"
+                                Foreground="Red" Style="{StaticResource TransportButtonStyle}"/>
+                        <Button x:Name="OpenYtMusicButton" Content="YTM" Width="40" Height="22"
+                                Margin="10,0,0,0" FontSize="11"
+                                Click="OpenYtMusicButton_Click" ToolTip="Open YouTube Music"
+                                Foreground="Red" BorderBrush="Red" Cursor="Hand"
+                                Style="{StaticResource ThemeButtonStyle}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Divider -->
+                <Border x:Name="PanelDivider" Grid.Column="1"
+                        BorderThickness="1,0,0,0" BorderBrush="Red" Opacity="0.5"
+                        Margin="0,2"/>
+
+                <!-- Pomodoro panel -->
+                <Grid Grid.Column="2" Margin="8,0,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock x:Name="ModeLabel" Grid.Row="0" Text="WORK" Foreground="Red"
+                               FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"/>
+
+                    <TextBlock x:Name="TimerText" Grid.Row="1" Text="25:00" Foreground="Red"
+                               FontSize="30" FontWeight="Bold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="StartPauseButton" Content="Start" Width="58" Height="22" Margin="3,0"
+                                FontSize="11" Click="StartPauseButton_Click"
+                                Foreground="Red" BorderBrush="Red" Cursor="Hand"
+                                Style="{StaticResource ThemeButtonStyle}"/>
+                        <Button x:Name="ResetButton" Content="Reset" Width="58" Height="22" Margin="3,0"
+                                FontSize="11" Click="ResetButton_Click"
+                                Foreground="Red" BorderBrush="Red" Cursor="Hand"
+                                Style="{StaticResource ThemeButtonStyle}"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- SETTINGS VIEW: overlays the whole card -->
+            <Grid x:Name="SettingsView" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock x:Name="WorkLabel" Text="Work (min)" Foreground="Red"
+                               FontSize="12" VerticalAlignment="Center"/>
+                    <TextBox x:Name="WorkDurationInput" Width="44" Margin="6,0,20,0"
+                             Background="#33000000" BorderThickness="1"
+                             VerticalContentAlignment="Center"/>
+
+                    <TextBlock x:Name="RestLabel" Text="Rest (min)" Foreground="Red"
+                               FontSize="12" VerticalAlignment="Center"/>
+                    <TextBox x:Name="RestDurationInput" Width="44" Margin="6,0,20,0"
+                             Background="#33000000" BorderThickness="1"
+                             VerticalContentAlignment="Center"/>
+
+                    <Button x:Name="DoneButton" Content="Done" Width="58" Height="24"
+                            FontSize="11" Click="DoneButton_Click"
+                            Foreground="Red" BorderBrush="Red" Cursor="Hand"
+                            Style="{StaticResource ThemeButtonStyle}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Settings toggle: declared last so it stays on top and visible in both views -->
+            <Button x:Name="SettingsButton" Content="&#xE713;"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Width="18" Height="18"
+                    Background="Transparent" BorderBrush="Transparent" Foreground="Red"
+                    Click="SettingsButton_Click" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <TextBlock Text="{TemplateBinding Content}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="14"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </Grid>
+    </Border>
+</Window>
